@@ -4,4 +4,4 @@ dist/
 .env
 .env.local
 
-/src/prisma-client/
+/src/generated/prisma/

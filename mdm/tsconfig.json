@@ -11,7 +11,11 @@
     "forceConsistentCasingInFileNames": true /* Disallow inconsistently-cased references to the same file */,
 
     "allowImportingTsExtensions": true,
-    "rewriteRelativeImportExtensions": true
+    "rewriteRelativeImportExtensions": true,
+
+    "paths": {
+      "@prisma/client": ["./src/generated/prisma/client.js"]
+    }
   },
   "include": ["src/**/*"]
 }
