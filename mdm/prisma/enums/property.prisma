@@ -1,0 +1,18 @@
+enum PropertyType {
+    HOUSE
+    APARTMENT
+    LAND
+}
+
+enum ListingType {
+    SALE
+    RENT
+}
+
+enum PropertyStatus {
+    ACTIVE // Available
+    PENDING // Under Contract
+    SOLD // TRX finished for a sale
+    RENTED // TRX finished for a lease
+    OFF_MARKET // Withdrawn or cancelled by the owner
+}

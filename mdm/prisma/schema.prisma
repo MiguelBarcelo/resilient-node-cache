@@ -11,3 +11,19 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model Property {
+  id          String         @id @default(uuid(7)) @db.Uuid
+  listingType ListingType    @map("listing_type")
+  type        PropertyType
+  address     String
+  bedrooms    Int?
+  baths       Decimal?       @db.Decimal(3, 1)
+  squareFeet  Int?           @map("square_feet")
+  lotSize     Int            @map("lot_size")
+  listPrice   Int            @map("list_price")
+  status      PropertyStatus @default(ACTIVE)
+
+  @@index([listingType, status])
+  @@map("properties")
+}
