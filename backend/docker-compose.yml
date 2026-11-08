@@ -1,7 +1,7 @@
 services:
   redis:
     image: redis:7.4-alpine
-    container_name: redis-rnc
+    container_name: rnc-redis
     restart: unless-stopped
     ports:
       - '${REDIS_PORT}:6379'
@@ -9,7 +9,13 @@ services:
       - REDIS_ARGS=--requirepass ${REDIS_PASSWORD} --appendonly yes
     volumes:
       - redis-data:/data
+    networks:
+      - rnc-net
 
 volumes:
   redis-data:
     driver: local
+
+networks:
+  rnc-net:
+    driver: bridge
