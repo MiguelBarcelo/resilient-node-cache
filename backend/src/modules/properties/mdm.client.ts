@@ -4,7 +4,7 @@ import type { PropertyDto } from './mdm.types.ts';
 const MDM_BASE_URL = process.env.MDM_BASE_URL; // TODO: Enforce using Zod
 const REQUEST_TIMEOUT_MS = 3000; // 3secs limit timeout
 
-export class MdmClient {
+export default class MdmClient {
   static async fetchProperties(): Promise<PropertyDto[]> {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
