@@ -1,14 +1,13 @@
 import express from 'express';
 import type { Request, Response, NextFunction } from 'express';
+import apiRouter from './routes/index.ts';
 
 const app = express();
 
 // Middleware to parse incoming JSON payloads
 app.use(express.json());
 
-app.get('/', (req: Request, res: Response) => {
-  res.json({ message: 'Hello from Node.js/Express + TypeScript!' });
-});
+app.use('/api/v1', apiRouter);
 
 // Centralized Error Handling Middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
