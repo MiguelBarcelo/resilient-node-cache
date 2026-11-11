@@ -15,4 +15,26 @@ redisClient.on('error', (err) => console.error('[redis] Client error', err));
   }
 })();
 
+export const getRedis = async (key: string) => {
+  return await redisClient.get(key);
+};
+
+export const setRedis = async (key: string, value: any): Promise<void> => {
+  await redisClient.set(key, value);
+};
+
+export const getOrSetDefault = async (
+  key: string,
+  fallbackFactory: () => any,
+) => {
+  const cachedValue = await redisClient.get(key);
+
+  if (cachedValue !== null) return cachedValue;
+
+  const defaultValue = await fallbackFactory();
+  await redisClient.set(key, defaultValue);
+
+  return defaultValue;
+};
+
 export default redisClient;
