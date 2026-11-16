@@ -1,15 +1,16 @@
 import redisClient from '../../config/redis.ts';
 import MdmClient from './mdm.client.ts';
-import { getRedis, setRedis, getOrSetDefault } from '../../config/redis.ts';
+import { setRedis, getOrSetDefault } from '../../config/redis.ts';
+import { PropertyDto } from './mdm.types.ts';
 
-const CB_NEXT_RETRY_TIMESTAMP_KEY = 'mdm:cb:next_retry_timestamp';
-const CB_STATUS_KEY = 'mdm:cb:status';
-const CB_FAIL_COUNTER_KEY = 'mdm:cb:fail_counter';
-const CB_RETRY_COUNTER_KEY = 'mdm:cb:retry_counter';
-const MDM_PROPERTIES_KEY = 'mdm:properties';
-const MINUTE = 60_000; // 60 secs (1 minute)
+export const CB_NEXT_RETRY_TIMESTAMP_KEY = 'mdm:cb:next_retry_timestamp';
+export const CB_STATUS_KEY = 'mdm:cb:status';
+export const CB_FAIL_COUNTER_KEY = 'mdm:cb:fail_counter';
+export const CB_RETRY_COUNTER_KEY = 'mdm:cb:retry_counter';
+export const MDM_PROPERTIES_KEY = 'mdm:properties';
+export const MINUTE = 60_000; // 60 secs (1 minute)
 const MAX_RETRIES = 5;
-const CbStatus = {
+export const CbStatus = {
   Open: 'OPEN',
   HalfOpen: 'HALF_OPEN',
   Closed: 'CLOSED',
@@ -23,7 +24,10 @@ const backoffExp = (retry: number) => {
   return Math.min(base * Math.pow(2, retry), maxDelay);
 };
 
-export const fetchProperties = async () => {
+export const fetchProperties = async (): Promise<{
+  data: PropertyDto[];
+  expiresAt: number;
+}> => {
   // Set Redis keys
   const CB_STATUS = await getOrSetDefault(CB_STATUS_KEY, () => CbStatus.Closed);
   const CB_NEXT_RETY_TIMESTAMP = await getOrSetDefault(
@@ -71,13 +75,13 @@ export const fetchProperties = async () => {
       }
     }
 
-    const data = await getRedis(MDM_PROPERTIES_KEY);
-    return data ? JSON.parse(data) : { data: [], expiresAt: Date.now() };
+    const { data, expiresAt } = JSON.parse(MDM_PROPERTIES);
+    return { data, expiresAt };
   }
 
   if (CB_STATUS === CbStatus.HalfOpen) {
-    const data = await getRedis(MDM_PROPERTIES_KEY);
-    return data ? JSON.parse(data) : { data: [], expiresAt: Date.now() };
+    const { data, expiresAt } = JSON.parse(MDM_PROPERTIES);
+    return { data, expiresAt };
   }
 
   if (CB_STATUS === CbStatus.Closed) {
@@ -101,7 +105,7 @@ export const fetchProperties = async () => {
 
         if (CB_FAIL_COUNTER >= MAX_RETRIES) {
           await setRedis(CB_STATUS_KEY, CbStatus.Open);
-          await redisClient.set(
+          await setRedis(
             CB_NEXT_RETRY_TIMESTAMP_KEY,
             Date.now() + backoffExp(0),
           );
@@ -115,4 +119,6 @@ export const fetchProperties = async () => {
 
     return { data, expiresAt };
   }
+
+  return { data: [], expiresAt: Date.now() };
 };
