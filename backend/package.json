@@ -5,9 +5,11 @@
   "main": "index.js",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "npm run typecheck && jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
+    "test": "dotenv -e .env.test -- jest --testPathIgnorePatterns=integration",
+    "test:unit": "npm run typecheck && dotenv -e .env.test -- jest --testPathIgnorePatterns=integration",
+    "test:int": "npm run typecheck && NODE_OPTIONS=\"$NODE_OPTIONS --experimental-vm-modules\" dotenv -e .env.test --  jest integration",
+    "test:watch": "dotenv -e .env.test -- jest --watch --testPathIgnorePatterns=integration",
+    "test:coverage": "dotenv -e .env.test -- jest --coverage",
     "start": "node dist/server.js",
     "build": "tsc",
     "start:dev": "nodemon --ext ts,json --exec node src/server.ts"
@@ -29,7 +31,9 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^26.6.6",
     "@types/supertest": "^7.2.1",
+    "dotenv-cli": "^11.1.0",
     "jest": "^30.5.2",
+    "nock": "^15.0.3",
     "nodemon": "^3.1.14",
     "supertest": "^7.3.2",
     "typescript": "^7.0.2"
