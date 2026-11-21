@@ -48,9 +48,9 @@ describe('Properties Integration Tests', () => {
   ];
 
   beforeAll(async () => {
-    //consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    //consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    //consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
 
     if (!process.env.REDIS_URL?.endsWith('/1')) {
       throw new Error(
@@ -64,14 +64,12 @@ describe('Properties Integration Tests', () => {
     await connectRedis();
   });
 
-  beforeEach(async () => {
-    await redisClient.flushDb();
-    nock.cleanAll();
-  });
-
-  afterEach(() => {
+  afterEach(async () => {
     jest.clearAllTimers();
     jest.useRealTimers();
+
+    await redisClient.flushDb();
+    nock.cleanAll();
   });
 
   afterAll(async () => {
@@ -125,15 +123,14 @@ describe('Properties Integration Tests', () => {
     const mdmScope = nock(MDM_BASE_URL!)
       .get('/properties')
       .times(5)
-      .reply(500, { message: 'Internal Server Error' });
-    //
+      .reply(500, { error: 'Internal Server Error' });
 
     for (let i = 0; i < 5; i++) {
       const res = await request(app)
         .get(`${API_BASE_URL}/properties`)
         .expect(200);
 
-      expect(res.body.data).toEqual([]); // TODO: Why [] ???
+      expect(res.body.data).toEqual([]);
     }
 
     expect(mdmScope.isDone()).toBe(true);
