@@ -337,7 +337,7 @@ describe('Properties Integration Tests', () => {
     expect(storedData).toEqual(response.body);
   });
 
-  it('should not affect Telemetry Circuit Breaker when MDM send errors other than 500', async () => {
+  it('should not affect Telemetry Circuit Breaker when MDM send 4xx errors', async () => {
     const mdmScope = nock(MDM_BASE_URL!)
       .get('/properties')
       .times(2)
@@ -356,16 +356,17 @@ describe('Properties Integration Tests', () => {
     expect(mdmScope.isDone()).toBe(true);
 
     const storedFailCounter = await redisClient.get(CB_FAIL_COUNTER_KEY);
+    expect(storedFailCounter).toBeNull();
+
     const storedStatus = await redisClient.get(CB_STATUS_KEY);
-    expect(storedFailCounter).toBe('0');
     expect(storedStatus).toBe(CbStatus.Closed);
   });
 
-  it('should not affect Telemetry Circuit Breaker when MDM send malformed responses', async () => {
+  it('should affect Telemetry Circuit Breaker when MDM send malformed responses', async () => {
     const mdmScope = nock(MDM_BASE_URL!)
       .get('/properties')
       .times(5)
-      .reply(200, { newStructure: 'Garbage' });
+      .reply(200, { newContractWithoutPriorNotice: 'Oops!' });
 
     let response;
     for (let i = 0; i < 5; i++) {
@@ -375,9 +376,7 @@ describe('Properties Integration Tests', () => {
     }
 
     expect(mdmScope.isDone()).toBe(true);
-
     expect(response).not.toBeFalsy();
-
     expect(response?.body).toEqual({
       data: [],
       expiresAt: expect.any(Number),
@@ -385,16 +384,17 @@ describe('Properties Integration Tests', () => {
 
     const cache = await redisClient.get(MDM_PROPERTIES_KEY);
     expect(cache).not.toBeNull();
+
     const storedData = JSON.parse(cache!);
     expect(storedData.data).not.toBeNull();
     expect(Array.isArray(storedData.data)).toBe(true);
     expect(storedData.expiresAt).not.toBeNull();
-
-    expect(storedData.newStructure).toBeUndefined();
+    expect(storedData.newContractWithoutPriorNotice).toBeUndefined();
 
     const storedFailCounter = await redisClient.get(CB_FAIL_COUNTER_KEY);
+    expect(storedFailCounter).toBe('5');
+
     const storedStatus = await redisClient.get(CB_STATUS_KEY);
-    expect(storedFailCounter).toBe('0');
-    expect(storedStatus).toBe(CbStatus.Closed);
+    expect(storedStatus).toBe(CbStatus.Open);
   });
 });
