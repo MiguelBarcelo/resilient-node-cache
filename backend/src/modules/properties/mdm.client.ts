@@ -1,5 +1,12 @@
 import axios from 'axios';
 import type { PropertyDto } from './mdm.types.ts';
+import {
+  AppError,
+  MdmConnectionFailed,
+  MdmContractError,
+  MdmHttpError,
+  MdmTimeoutError,
+} from '../../errors/AppError.ts';
 
 const MDM_BASE_URL = process.env.MDM_BASE_URL; // TODO: Enforce using Zod
 const REQUEST_TIMEOUT_MS = 3000; // 3secs limit timeout
@@ -21,21 +28,30 @@ export default class MdmClient {
         },
       );
 
+      if (!Array.isArray(response.data.data)) {
+        throw new MdmContractError();
+      }
+
       return response.data.data;
     } catch (error: any) {
+      if (error instanceof AppError) throw error;
+
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNABORTED' || error.name === 'CanceledError') {
-          throw new Error(
+          throw new MdmTimeoutError(
             `MDM request timed out after ${REQUEST_TIMEOUT_MS}ms`,
           );
         }
 
         if (error.response) {
-          throw new Error(`MDM respond with status: ${error.response.status}`);
+          throw new MdmHttpError(
+            `MDM respond with status: ${error.response.status}`,
+            error.response.status,
+          );
         }
       }
 
-      throw new Error(`MDM connection failed: ${error.message}`);
+      throw new MdmConnectionFailed(`MDM connection failed: ${error?.message}`);
     } finally {
       clearTimeout(timeoutId);
     }
