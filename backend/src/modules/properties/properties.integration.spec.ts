@@ -1,12 +1,4 @@
-import {
-  jest,
-  describe,
-  it,
-  expect,
-  beforeAll,
-  beforeEach,
-  afterAll,
-} from '@jest/globals';
+import { jest, describe, it, expect, beforeAll, afterAll } from '@jest/globals';
 import request from 'supertest';
 import nock from 'nock';
 import app from '../../app.ts';
@@ -19,6 +11,8 @@ import {
 } from './properties.service.ts';
 import { PropertyDto } from './mdm.types.ts';
 import { MINUTE } from './properties.service.ts';
+import { REQUEST_TIMEOUT_MS } from './mdm.client.ts';
+import logger from '../../utils/logger.ts';
 
 const API_BASE_URL = '/api/v1';
 const MDM_BASE_URL = process.env.MDM_BASE_URL;
@@ -49,7 +43,7 @@ describe('Properties Integration Tests', () => {
 
   beforeAll(async () => {
     consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    //consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
     consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
 
     if (!process.env.REDIS_URL?.endsWith('/1')) {
@@ -150,7 +144,7 @@ describe('Properties Integration Tests', () => {
     expect(openResponse.body.data).toEqual([]);
   });
 
-  it('should serve expired cache from Redis when MDM is not available', async () => {
+  it('should serve stale data from Redis when MDM is not available', async () => {
     jest.useFakeTimers({
       doNotFake: [
         'setTimeout',
@@ -396,5 +390,23 @@ describe('Properties Integration Tests', () => {
 
     const storedStatus = await redisClient.get(CB_STATUS_KEY);
     expect(storedStatus).toBe(CbStatus.Open);
+  });
+
+  it('should throw MdmTimeoutError and response 200 when MDM reaches timeout', async () => {
+    const errorSpy = jest.spyOn(logger, 'error');
+
+    const mdmScope = nock(MDM_BASE_URL!)
+      .get('/properties')
+      .delay(REQUEST_TIMEOUT_MS + 500)
+      .reply(200, { data: mockProperties });
+
+    await request(app).get(`${API_BASE_URL}/properties`).expect(200);
+
+    expect(mdmScope.isDone()).toBe(true);
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.objectContaining({ event: 'MDM_TIMEOUT', service: 'MdmClient' }),
+    );
+
+    errorSpy.mockRestore();
   });
 });
