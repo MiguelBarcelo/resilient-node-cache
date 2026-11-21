@@ -87,7 +87,7 @@ export const fetchProperties = async (): Promise<{
   if (CB_STATUS === CbStatus.Closed) {
     const { data, expiresAt } = JSON.parse(MDM_PROPERTIES);
 
-    if (data.length === 0 || expiresAt <= Date.now()) {
+    if ((Array.isArray(data) && data.length === 0) || expiresAt <= Date.now()) {
       try {
         const data = await MdmClient.fetchProperties();
 
@@ -96,23 +96,25 @@ export const fetchProperties = async (): Promise<{
 
         return { data, expiresAt };
       } catch (error: any) {
-        // Increment atomically
-        const CB_FAIL_COUNTER = await redisClient.incr(CB_FAIL_COUNTER_KEY);
+        if (!(error?.statusCode >= 400 && error?.statusCode < 500)) {
+          // Increment atomically
+          const CB_FAIL_COUNTER = await redisClient.incr(CB_FAIL_COUNTER_KEY);
 
-        console.error(
-          `[PropertiesService] [CB:CLOSED] Failed to fetch properties (Attempt ${CB_FAIL_COUNTER}/${MAX_RETRIES}). Error: ${error.message}`,
-        );
-
-        if (CB_FAIL_COUNTER >= MAX_RETRIES) {
-          await setRedis(CB_STATUS_KEY, CbStatus.Open);
-          await setRedis(
-            CB_NEXT_RETRY_TIMESTAMP_KEY,
-            Date.now() + backoffExp(0),
+          console.error(
+            `[PropertiesService] [CB:CLOSED] Failed to fetch properties (Attempt ${CB_FAIL_COUNTER}/${MAX_RETRIES}). Error: ${error.message}`,
           );
 
-          console.warn(
-            `[PropertiesService] [CB:TRIPPED] Circuit Breaker opened due to consecutive failures. Next retry scheduled in ${backoffExp(0)}ms.`,
-          );
+          if (CB_FAIL_COUNTER >= MAX_RETRIES) {
+            await setRedis(CB_STATUS_KEY, CbStatus.Open);
+            await setRedis(
+              CB_NEXT_RETRY_TIMESTAMP_KEY,
+              Date.now() + backoffExp(0),
+            );
+
+            console.warn(
+              `[PropertiesService] [CB:TRIPPED] Circuit Breaker opened due to consecutive failures. Next retry scheduled in ${backoffExp(0)}ms.`,
+            );
+          }
         }
       }
     }
