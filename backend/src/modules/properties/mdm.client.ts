@@ -31,7 +31,6 @@ export default class MdmClient {
 
       if (!Array.isArray(response.data.data)) {
         logger.error({
-          level: 'error',
           msg: 'MDM Contract expected is not valid',
           service: 'MdmClient',
           event: 'MDM_INVALID_CONTRACT',
@@ -47,7 +46,6 @@ export default class MdmClient {
       if (axios.isAxiosError(error)) {
         if (error.code === 'ECONNABORTED' || error.name === 'CanceledError') {
           logger.error({
-            level: 'error',
             msg: 'MDM request timed out of time',
             service: 'MdmClient',
             event: 'MDM_TIMEOUT',
@@ -60,7 +58,6 @@ export default class MdmClient {
 
         if (error.response) {
           logger.error({
-            level: 'error',
             msg: 'Response from MDM',
             service: 'MdmClient',
             event: 'MDM_HTTP_ERROR',
@@ -74,7 +71,6 @@ export default class MdmClient {
       }
 
       logger.error({
-        level: 'error',
         msg: 'MDM connection failed',
         service: 'MdmClient',
         event: 'MDM_CONNECTION_FAILED',
