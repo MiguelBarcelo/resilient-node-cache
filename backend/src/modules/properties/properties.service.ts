@@ -2,6 +2,7 @@ import redisClient from '../../config/redis.ts';
 import MdmClient from './mdm.client.ts';
 import { setRedis, getOrSetDefault } from '../../config/redis.ts';
 import { PropertyDto } from './mdm.types.ts';
+import logger from '../../utils/logger.ts';
 
 export const CB_NEXT_RETRY_TIMESTAMP_KEY = 'mdm:cb:next_retry_timestamp';
 export const CB_STATUS_KEY = 'mdm:cb:status';
@@ -43,9 +44,13 @@ export const fetchProperties = async (): Promise<{
     if (+CB_NEXT_RETY_TIMESTAMP <= Date.now()) {
       await setRedis(CB_STATUS_KEY, CbStatus.HalfOpen);
 
-      console.info(
-        `[PropertiesService] [CB:HALF_OPEN] Testing MDM recovery with a probe request...`,
-      );
+      logger.info({
+        msg: 'Testing MDM recovery with a probe request',
+        service: 'PropertiesService',
+        event: 'CB_STATE_CHANGED',
+        from: CbStatus.Open,
+        to: CbStatus.HalfOpen,
+      });
 
       try {
         const data = await MdmClient.fetchProperties();
@@ -56,9 +61,13 @@ export const fetchProperties = async (): Promise<{
         await setRedis(CB_RETRY_COUNTER_KEY, 0);
         await setRedis(MDM_PROPERTIES_KEY, JSON.stringify({ data, expiresAt }));
 
-        console.info(
-          `[PropertiesService] [CB:RECOVERED] MDM probe succeeded. Circuit Breaker closed and counters reset.`,
-        );
+        logger.info({
+          msg: 'MDM probe succeeded. Circuit Breaker closed and counters reset',
+          service: 'PropertiesService',
+          event: 'CB_STATE_CHANGED',
+          from: CbStatus.HalfOpen,
+          to: CbStatus.Closed,
+        });
 
         return { data, expiresAt };
       } catch (error: any) {
@@ -69,9 +78,13 @@ export const fetchProperties = async (): Promise<{
           Date.now() + backoffExp(CB_RETRY_COUNTER),
         );
 
-        console.warn(
-          `[PropertiesService] [CB:OPEN] MDM is currently unreachable. Serving stale cache data.`,
-        );
+        logger.warn({
+          msg: 'MDM is currently unreachable. Serving stale cache data.',
+          service: 'PropertiesService',
+          event: 'CB_STATE_CHANGED',
+          from: CbStatus.HalfOpen,
+          to: CbStatus.Open,
+        });
       }
     }
 
@@ -100,9 +113,12 @@ export const fetchProperties = async (): Promise<{
           // Increment atomically
           const CB_FAIL_COUNTER = await redisClient.incr(CB_FAIL_COUNTER_KEY);
 
-          console.error(
-            `[PropertiesService] [CB:CLOSED] Failed to fetch properties (Attempt ${CB_FAIL_COUNTER}/${MAX_RETRIES}). Error: ${error.message}`,
-          );
+          logger.error({
+            msg: 'Failed to fetch properties',
+            service: 'PropertiesService',
+            event: 'CB_CLOSED',
+            cbFailCounter: CB_FAIL_COUNTER,
+          });
 
           if (CB_FAIL_COUNTER >= MAX_RETRIES) {
             await setRedis(CB_STATUS_KEY, CbStatus.Open);
@@ -111,9 +127,13 @@ export const fetchProperties = async (): Promise<{
               Date.now() + backoffExp(0),
             );
 
-            console.warn(
-              `[PropertiesService] [CB:TRIPPED] Circuit Breaker opened due to consecutive failures. Next retry scheduled in ${backoffExp(0)}ms.`,
-            );
+            logger.warn({
+              msg: 'Circuit Breaker opened due to consecutive failures',
+              service: 'PropertiesService',
+              event: 'CB_STATE_CHANGED',
+              from: CbStatus.Closed,
+              to: CbStatus.Open,
+            });
           }
         }
       }
