@@ -1,7 +1,7 @@
 import redisClient from '../../config/redis.ts';
 import MdmClient from './mdm.client.ts';
 import { setRedis, getOrSetDefault } from '../../config/redis.ts';
-import { PropertyDto } from './mdm.types.ts';
+import type { PropertyDto } from './mdm.types.ts';
 import logger from '../../utils/logger.ts';
 
 export const CB_NEXT_RETRY_TIMESTAMP_KEY = 'mdm:cb:next_retry_timestamp';
