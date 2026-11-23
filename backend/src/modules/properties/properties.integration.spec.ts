@@ -20,9 +20,9 @@ const factoryError = (message: string, code: string) =>
   Object.assign(new Error(message), { code });
 
 describe('Properties Integration Tests', () => {
-  let consoleWarnSpy: ReturnType<typeof jest.spyOn>;
-  let consoleErrorSpy: ReturnType<typeof jest.spyOn>;
-  let consoleInfoSpy: ReturnType<typeof jest.spyOn>;
+  let loggerWarnSpy: ReturnType<typeof jest.spyOn>;
+  let loggerErrorSpy: ReturnType<typeof jest.spyOn>;
+  let loggerInfoSpy: ReturnType<typeof jest.spyOn>;
 
   const networkError = factoryError('Connection refused', 'ECONNREFUSED');
 
@@ -42,9 +42,9 @@ describe('Properties Integration Tests', () => {
   ];
 
   beforeAll(async () => {
-    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    //consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    loggerWarnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+    loggerErrorSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});
+    loggerInfoSpy = jest.spyOn(logger, 'info').mockImplementation(() => {});
 
     if (!process.env.REDIS_URL?.endsWith('/1')) {
       throw new Error(

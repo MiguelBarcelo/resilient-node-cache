@@ -10,6 +10,7 @@ import {
 } from './properties.service.ts';
 import redisClient, { setRedis, getOrSetDefault } from '../../config/redis.ts';
 import MdmClient from './mdm.client.ts';
+import logger from '../../utils/logger.ts';
 import { PropertyDto } from './mdm.types.ts';
 
 jest.mock('../../config/redis.ts');
@@ -21,9 +22,9 @@ describe('Properties Service', () => {
   const mockSetRedis = jest.mocked(setRedis);
   const mockRedisClient = jest.mocked(redisClient);
 
-  let consoleErrorSpy: jest.SpyInstance;
-  let consoleWarnSpy: jest.SpyInstance;
-  let consoleInfoSpy: jest.SpyInstance;
+  let loggerErrorSpy: jest.SpyInstance;
+  let loggerWarnSpy: jest.SpyInstance;
+  let loggerInfoSpy: jest.SpyInstance;
 
   const data: PropertyDto[] = [
     {
@@ -43,9 +44,9 @@ describe('Properties Service', () => {
   beforeEach(() => {
     jest.resetAllMocks();
 
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
-    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-    consoleInfoSpy = jest.spyOn(console, 'info').mockImplementation(() => {});
+    loggerErrorSpy = jest.spyOn(logger, 'error').mockImplementation(() => {});
+    loggerWarnSpy = jest.spyOn(logger, 'warn').mockImplementation(() => {});
+    loggerInfoSpy = jest.spyOn(logger, 'info').mockImplementation(() => {});
   });
 
   afterEach(() => {
@@ -130,11 +131,16 @@ describe('Properties Service', () => {
         MDM_PROPERTIES_KEY,
         expect.any(String),
       );
-      expect(consoleErrorSpy).toHaveBeenCalledTimes(1);
-      expect(consoleErrorSpy).toHaveBeenCalledWith(
-        '[PropertiesService] [CB:CLOSED] Failed to fetch properties (Attempt 1/5). Error: Network error',
+      expect(loggerErrorSpy).toHaveBeenCalledTimes(1);
+      expect(loggerErrorSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          event: 'CB_CLOSED',
+          msg: 'Failed to fetch properties',
+          service: 'PropertiesService',
+          cbFailCounter: expect.any(Number),
+        }),
       );
-      expect(consoleWarnSpy).not.toHaveBeenCalled();
+      expect(loggerWarnSpy).not.toHaveBeenCalled();
     });
 
     it('should open the CB and return stale data when reach the max fails counter', async () => {
@@ -164,9 +170,15 @@ describe('Properties Service', () => {
         CB_NEXT_RETRY_TIMESTAMP_KEY,
         expect.any(Number),
       );
-      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        '[PropertiesService] [CB:TRIPPED] Circuit Breaker opened due to consecutive failures. Next retry scheduled in 1000ms.',
+      expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          msg: 'Circuit Breaker opened due to consecutive failures',
+          service: 'PropertiesService',
+          event: 'CB_STATE_CHANGED',
+          from: CbStatus.Closed,
+          to: CbStatus.Open,
+        }),
       );
     });
 
@@ -219,12 +231,24 @@ describe('Properties Service', () => {
         expect.any(String),
       );
 
-      expect(consoleInfoSpy).toHaveBeenCalledTimes(2);
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        '[PropertiesService] [CB:HALF_OPEN] Testing MDM recovery with a probe request...',
+      expect(loggerInfoSpy).toHaveBeenCalledTimes(2);
+      expect(loggerInfoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          msg: 'Testing MDM recovery with a probe request',
+          service: 'PropertiesService',
+          event: 'CB_STATE_CHANGED',
+          from: CbStatus.Open,
+          to: CbStatus.HalfOpen,
+        }),
       );
-      expect(consoleInfoSpy).toHaveBeenCalledWith(
-        '[PropertiesService] [CB:RECOVERED] MDM probe succeeded. Circuit Breaker closed and counters reset.',
+      expect(loggerInfoSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          msg: 'MDM probe succeeded. Circuit Breaker closed and counters reset',
+          service: 'PropertiesService',
+          event: 'CB_STATE_CHANGED',
+          from: CbStatus.HalfOpen,
+          to: CbStatus.Closed,
+        }),
       );
     });
 
@@ -252,9 +276,15 @@ describe('Properties Service', () => {
         expect.any(Number),
       );
 
-      expect(consoleWarnSpy).toHaveBeenCalledTimes(1);
-      expect(consoleWarnSpy).toHaveBeenCalledWith(
-        '[PropertiesService] [CB:OPEN] MDM is currently unreachable. Serving stale cache data.',
+      expect(loggerWarnSpy).toHaveBeenCalledTimes(1);
+      expect(loggerWarnSpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          msg: 'MDM is currently unreachable. Serving stale cache data.',
+          service: 'PropertiesService',
+          event: 'CB_STATE_CHANGED',
+          from: CbStatus.HalfOpen,
+          to: CbStatus.Open,
+        }),
       );
     });
 
