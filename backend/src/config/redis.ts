@@ -4,6 +4,7 @@ export type RedisClientType = ReturnType<typeof createClient>;
 
 const redisClient: RedisClientType = createClient({
   url: process.env.REDIS_URL,
+  password: process.env.REDIS_PASSWORD,
 });
 
 redisClient.on('error', (err) => console.error('[redis] Client error', err));
