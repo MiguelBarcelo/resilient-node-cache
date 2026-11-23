@@ -1,0 +1,15 @@
+node_modules
+
+dist
+coverage
+docs
+
+.env*
+
+.git
+.gitignore
+
+docker-compose.yml
+Dockerfile
+
+jest.config.cjs
